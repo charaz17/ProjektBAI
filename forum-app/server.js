@@ -1,52 +1,17 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { Sequelize, DataTypes } = require('sequelize');
 const moment = require('moment');
+const sequelize = require('./db'); // Import the sequelize instance
+
 const app = express();
 const port = 3000;
-
-const sequelize = new Sequelize('forum_app', 'postgres', 'postgres', {
-  host: 'localhost',
-  dialect: 'postgres',
-  logging: console.log,
-});
-
-const User = sequelize.define('User', {
-  username: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true,
-  },
-  password: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-});
-
-const Post = sequelize.define('Post', {
-  user_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-  },
-  content: {
-    type: DataTypes.TEXT,
-    allowNull: false,
-  },
-  timestamp: {
-    type: DataTypes.DATE,
-    defaultValue: Sequelize.NOW,
-  },
-});
-
-User.hasMany(Post, { foreignKey: 'user_id' });
-Post.belongsTo(User, { foreignKey: 'user_id' });
-
-sequelize.sync();
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 app.set('view engine', 'ejs');
+
+// Routes
 
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html');
@@ -58,8 +23,10 @@ app.get('/register', (req, res) => {
 
 app.post('/register', async (req, res) => {
   const { username, password } = req.body;
+  const query = `INSERT INTO "Users" ("username", "password", "createdAt", "updatedAt") VALUES ('${username}', '${password}', NOW(), NOW())`;
+  
   try {
-    await User.create({ username, password });
+    await sequelize.query(query);
     res.render('message', { message: 'Account created successfully, you can login now.' });
   } catch (err) {
     console.error('Error inserting user:', err.message);
@@ -73,15 +40,13 @@ app.get('/login', (req, res) => {
 
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
+  const query = `SELECT "id", "username", "password", "createdAt", "updatedAt" FROM "Users" WHERE "username" = '${username}' AND "password" = '${password}'`;
 
-  const query = `SELECT "id", "username", "password", "createdAt", "updatedAt"
-                 FROM "Users" AS "User"
-                 WHERE "User"."username" = '${username}' AND "User"."password" = '${password}'`;
-  
   try {
-    const user = await sequelize.query(query, { raw: true });
-    if (user && user.length > 0) {
-      res.redirect(`/forum?user_id=${user[0].id}`);
+    const [results, metadata] = await sequelize.query(query);
+    const user = results[0];
+    if (user) {
+      res.redirect(`/forum?user_id=${user.id}`);
     } else {
       res.redirect('/login');
     }
@@ -89,29 +54,24 @@ app.post('/login', async (req, res) => {
     console.error('Error logging in:', err.message);
     res.redirect('/login');
   }
-  
 });
-
-
 
 app.get('/forum', async (req, res) => {
   const user_id = req.query.user_id;
-  try {
-    const posts = await Post.findAll({
-      include: {
-        model: User,
-        attributes: ['username']
-      }
-    });
+  const query = `
+    SELECT "Posts"."id", "Posts"."user_id", "Posts"."content", "Posts"."timestamp", "Users"."username"
+    FROM "Posts"
+    INNER JOIN "Users" ON "Posts"."user_id" = "Users"."id"
+  `;
 
-    // Intentionally vulnerable code: rendering raw content without sanitization
-    res.render('forum_vulnerable', { posts, user_id }); // Using a new view to demonstrate vulnerability
+  try {
+    const [posts, metadata] = await sequelize.query(query);
+    res.render('forum', { posts, user_id });
   } catch (err) {
     console.error('Error fetching posts:', err.message);
-    res.render('forum_vulnerable', { posts: [], user_id });
+    res.render('forum', { posts: [], user_id });
   }
 });
-
 
 app.get('/post', (req, res) => {
   const user_id = req.query.user_id;
@@ -120,8 +80,10 @@ app.get('/post', (req, res) => {
 
 app.post('/post', async (req, res) => {
   const { user_id, content } = req.body;
+  const query = `INSERT INTO "Posts" ("user_id", "content", "timestamp") VALUES (${user_id}, '${content}', NOW())`;
+
   try {
-    await Post.create({ user_id, content });
+    await sequelize.query(query);
     res.redirect(`/forum?user_id=${user_id}`);
   } catch (err) {
     console.error('Error creating post:', err.message);
@@ -129,6 +91,7 @@ app.post('/post', async (req, res) => {
   }
 });
 
+// Start server
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
