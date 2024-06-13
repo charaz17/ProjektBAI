@@ -71,19 +71,28 @@ app.get('/login', (req, res) => {
   res.sendFile(__dirname + '/views/login.html');
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  User.findOne({ where: { username, password } }).then(user => {
-    if (user) {
-      res.redirect(`/forum?user_id=${user.id}`);
+
+  const query = `SELECT "id", "username", "password", "createdAt", "updatedAt"
+                 FROM "Users" AS "User"
+                 WHERE "User"."username" = '${username}' AND "User"."password" = '${password}'`;
+  
+  try {
+    const user = await sequelize.query(query, { raw: true });
+    if (user && user.length > 0) {
+      res.redirect(`/forum?user_id=${user[0].id}`);
     } else {
       res.redirect('/login');
     }
-  }).catch(err => {
+  } catch (err) {
     console.error('Error logging in:', err.message);
     res.redirect('/login');
-  });
+  }
+  
 });
+
+
 
 app.get('/forum', async (req, res) => {
   const user_id = req.query.user_id;
@@ -95,20 +104,14 @@ app.get('/forum', async (req, res) => {
       }
     });
 
-    const formattedPosts = posts.map(post => {
-      return {
-        ...post.dataValues,
-        username: post.User.username,
-        formattedTimestamp: moment(post.timestamp).format('MMMM Do YYYY, h:mm:ss a')
-      };
-    });
-
-    res.render('forum', { posts: formattedPosts, user_id });
+    // Intentionally vulnerable code: rendering raw content without sanitization
+    res.render('forum_vulnerable', { posts, user_id }); // Using a new view to demonstrate vulnerability
   } catch (err) {
     console.error('Error fetching posts:', err.message);
-    res.render('forum', { posts: [], user_id });
+    res.render('forum_vulnerable', { posts: [], user_id });
   }
 });
+
 
 app.get('/post', (req, res) => {
   const user_id = req.query.user_id;
