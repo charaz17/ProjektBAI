@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/styles.css">
   <title>Forum</title>
 </head>
 <body>
@@ -11,7 +12,7 @@
   <ul>
     <% posts.forEach(post => { %>
       <li>
-        <strong><%= post.username %></strong> at <em><%= post.timestamp %></em>: <%= post.content %>
+        <strong><%= post.username %></strong> at <em><%= post.formattedTimestamp %></em>: <%= post.content %>
       </li>
     <% }) %>
   </ul>

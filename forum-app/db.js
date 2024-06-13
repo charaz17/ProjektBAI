@@ -6,7 +6,7 @@ const { Sequelize, DataTypes } = require('sequelize');
 const sequelize = new Sequelize('forum_app', 'postgres', 'postgres', {
   host: 'localhost',
   dialect: 'postgres',
-  //logging: console.log, // Enable logging
+  logging: console.log, // Enable logging
 });
 
 // Define the User model

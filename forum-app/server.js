@@ -1,13 +1,51 @@
-// server.js
-
 const express = require('express');
 const bodyParser = require('body-parser');
-const { sequelize, User, Post } = require('./db');
+const { Sequelize, DataTypes } = require('sequelize');
+const moment = require('moment');
 const app = express();
 const port = 3000;
 
+const sequelize = new Sequelize('forum_app', 'postgres', 'postgres', {
+  host: 'localhost',
+  dialect: 'postgres',
+  logging: console.log,
+});
+
+const User = sequelize.define('User', {
+  username: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+  },
+  password: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+});
+
+const Post = sequelize.define('Post', {
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
+  content: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  timestamp: {
+    type: DataTypes.DATE,
+    defaultValue: Sequelize.NOW,
+  },
+});
+
+User.hasMany(Post, { foreignKey: 'user_id' });
+Post.belongsTo(User, { foreignKey: 'user_id' });
+
+sequelize.sync();
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
+
 app.set('view engine', 'ejs');
 
 app.get('/', (req, res) => {
@@ -33,29 +71,42 @@ app.get('/login', (req, res) => {
   res.sendFile(__dirname + '/views/login.html');
 });
 
-app.post('/login', async (req, res) => {
+app.post('/login', (req, res) => {
   const { username, password } = req.body;
-  try {
-    const user = await User.findOne({ where: { username, password } });
+  User.findOne({ where: { username, password } }).then(user => {
     if (user) {
       res.redirect(`/forum?user_id=${user.id}`);
     } else {
       res.redirect('/login');
     }
-  } catch (err) {
+  }).catch(err => {
     console.error('Error logging in:', err.message);
-    res.status(500).send('Internal Server Error');
-  }
+    res.redirect('/login');
+  });
 });
 
 app.get('/forum', async (req, res) => {
   const user_id = req.query.user_id;
   try {
-    const posts = await Post.findAll({ include: User });
-    res.render('forum', { posts, user_id });
+    const posts = await Post.findAll({
+      include: {
+        model: User,
+        attributes: ['username']
+      }
+    });
+
+    const formattedPosts = posts.map(post => {
+      return {
+        ...post.dataValues,
+        username: post.User.username,
+        formattedTimestamp: moment(post.timestamp).format('MMMM Do YYYY, h:mm:ss a')
+      };
+    });
+
+    res.render('forum', { posts: formattedPosts, user_id });
   } catch (err) {
     console.error('Error fetching posts:', err.message);
-    res.status(500).send('Internal Server Error');
+    res.render('forum', { posts: [], user_id });
   }
 });
 
@@ -71,7 +122,7 @@ app.post('/post', async (req, res) => {
     res.redirect(`/forum?user_id=${user_id}`);
   } catch (err) {
     console.error('Error creating post:', err.message);
-    res.status(500).send('Failed to create post.');
+    res.redirect(`/forum?user_id=${user_id}`);
   }
 });
 
