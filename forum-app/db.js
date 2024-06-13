@@ -1,9 +1,48 @@
-const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('forum-app.db'); // Use a persistent file
+// db.js
 
-db.serialize(() => {
-  db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT, password TEXT)");
-  db.run("CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY, user_id INTEGER, content TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id))");
+const { Sequelize, DataTypes } = require('sequelize');
+
+// Create a new Sequelize instance
+const sequelize = new Sequelize('forum_app', 'postgres', 'postgres', {
+  host: 'localhost',
+  dialect: 'postgres',
+  //logging: console.log, // Enable logging
 });
 
-module.exports = db;
+// Define the User model
+const User = sequelize.define('User', {
+  username: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true, // Ensure username is unique
+  },
+  password: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+});
+
+// Define the Post model
+const Post = sequelize.define('Post', {
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
+  content: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  timestamp: {
+    type: DataTypes.DATE,
+    defaultValue: Sequelize.NOW,
+  },
+});
+
+// Define associations
+User.hasMany(Post, { foreignKey: 'user_id' });
+Post.belongsTo(User, { foreignKey: 'user_id' });
+
+// Synchronize models with the database
+sequelize.sync();
+
+module.exports = { sequelize, User, Post };

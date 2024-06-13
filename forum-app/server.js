@@ -1,12 +1,13 @@
+// server.js
+
 const express = require('express');
 const bodyParser = require('body-parser');
-const db = require('./db');
+const { sequelize, User, Post } = require('./db');
 const app = express();
 const port = 3000;
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
-
 app.set('view engine', 'ejs');
 
 app.get('/', (req, res) => {
@@ -17,49 +18,61 @@ app.get('/register', (req, res) => {
   res.sendFile(__dirname + '/views/register.html');
 });
 
-app.post('/register', (req, res) => {
+app.post('/register', async (req, res) => {
   const { username, password } = req.body;
-  db.run(`INSERT INTO users (username, password) VALUES (?, ?)`, [username, password], function(err) {
-    if (err) return console.error(err.message);
-    res.render('message.ejs', { message: 'Account created successfully, you can login now.' });
-  });
+  try {
+    await User.create({ username, password });
+    res.render('message', { message: 'Account created successfully, you can login now.' });
+  } catch (err) {
+    console.error('Error inserting user:', err.message);
+    res.render('message', { message: 'Failed to create account. ' + err.message });
+  }
 });
 
 app.get('/login', (req, res) => {
   res.sendFile(__dirname + '/views/login.html');
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  db.get(`SELECT * FROM users WHERE username = ? AND password = ?`, [username, password], (err, row) => {
-    if (err) return console.error(err.message);
-    if (row) {
-      res.redirect(`/forum?user_id=${row.id}`);
+  try {
+    const user = await User.findOne({ where: { username, password } });
+    if (user) {
+      res.redirect(`/forum?user_id=${user.id}`);
     } else {
       res.redirect('/login');
     }
-  });
+  } catch (err) {
+    console.error('Error logging in:', err.message);
+    res.status(500).send('Internal Server Error');
+  }
 });
 
-app.get('/forum', (req, res) => {
+app.get('/forum', async (req, res) => {
   const user_id = req.query.user_id;
-  db.all(`SELECT posts.*, users.username FROM posts JOIN users ON posts.user_id = users.id`, (err, rows) => {
-    if (err) return console.error(err.message);
-    res.render('forum.ejs', { posts: rows, user_id: user_id });
-  });
+  try {
+    const posts = await Post.findAll({ include: User });
+    res.render('forum', { posts, user_id });
+  } catch (err) {
+    console.error('Error fetching posts:', err.message);
+    res.status(500).send('Internal Server Error');
+  }
 });
 
 app.get('/post', (req, res) => {
   const user_id = req.query.user_id;
-  res.render('post.ejs', { user_id: user_id });
+  res.render('post', { user_id });
 });
 
-app.post('/post', (req, res) => {
+app.post('/post', async (req, res) => {
   const { user_id, content } = req.body;
-  db.run(`INSERT INTO posts (user_id, content) VALUES (?, ?)`, [user_id, content], function(err) {
-    if (err) return console.error(err.message);
+  try {
+    await Post.create({ user_id, content });
     res.redirect(`/forum?user_id=${user_id}`);
-  });
+  } catch (err) {
+    console.error('Error creating post:', err.message);
+    res.status(500).send('Failed to create post.');
+  }
 });
 
 app.listen(port, () => {

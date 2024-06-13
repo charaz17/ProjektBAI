@@ -3,17 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="/styles.css">
   <title>Create Post</title>
 </head>
 <body>
   <h1>Create Post</h1>
   <form action="/post" method="POST">
     <input type="hidden" name="user_id" value="<%= user_id %>">
-    <label for="content">Content:</label>
-    <textarea id="content" name="content"></textarea><br>
-    <button type="submit">Post</button>
+    <textarea name="content" rows="4" cols="50"></textarea><br>
+    <button type="submit">Submit</button>
   </form>
   <a href="/forum?user_id=<%= user_id %>">Back to Forum</a>
+  <a href="/">Home</a>
 </body>
 </html>
