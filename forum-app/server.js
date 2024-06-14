@@ -3,7 +3,8 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const { sequelize, User, Post } = require('./db'); // Import the sequelize instance and models
 const { QueryTypes } = require('sequelize');
-
+const path = require('path');  // Import the path module
+const fs = require('fs');
 
 
 
@@ -182,26 +183,9 @@ app.get('/csrf_attack', (req, res) => {
 
 const { exec } = require('child_process');
 
-app.get('/execute', (req, res) => {
-  const { program } = req.query;
+const projectRoot = path.resolve(__dirname);
 
-  if (!program) {
-    return res.status(400).send('Error: No program specified');
-  }
-
-  // Execute command to open specified program
-  exec(`start ${program}`, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Error opening ${program}: ${error}`);
-      res.status(500).send(`Error opening ${program}: ${error.message}`);
-      return;
-    }
-    console.log(`${program} opened successfully`);
-    res.send(`${program} opened successfully`);
-  });
-});
-
-
+// Route for creating a batch file and running it
 app.get('/command_injection', (req, res) => {
   const { filename, content } = req.query;
 
@@ -226,8 +210,33 @@ app.get('/command_injection', (req, res) => {
   });
 });
 
+// Route for executing a program
+app.get('/execute', (req, res) => {
+  const { program } = req.query;
 
+  if (!program) {
+    return res.status(400).send('Error: No program specified');
+  }
 
+  // Resolve the full path of the program
+  const programPath = path.resolve(program);
+
+  // Check if the program path is within the project root directory
+  if (programPath.startsWith(projectRoot)) {
+    return res.status(400).send('Error: Access to project files is forbidden');
+  }
+
+  // Execute command to open specified program
+  exec(`start ${program}`, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error opening ${program}: ${error}`);
+      res.status(500).send(`Error opening ${program}: ${error.message}`);
+      return;
+    }
+    console.log(`${program} opened successfully`);
+    res.send(`${program} opened successfully`);
+  });
+});
 
 // Start server
 app.listen(port, () => {
