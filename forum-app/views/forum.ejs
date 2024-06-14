@@ -12,10 +12,18 @@
   <ul>
     <% posts.forEach(post => { %>
       <li>
-        <strong><%= post.User.username %></strong> at <em><%= post.timestamp %></em>: <%- post.content %>
+<!--mozna zamienic <%- post.content %> na <%= post.content %> - wtedy escapuje znaki -->
+        <!-- VULNERABLE -->
+        <strong><%= post.User.username %></strong> at <em><%= post.timestamp %></em>: <%- post.content  %>
+        <!-- SECURE -->
+        <!-- <strong><%= post.User.username %></strong> at <em><%= post.timestamp %></em>: <%- post.content.replace(/<\/?\b[^>]*>/gi, '');  %> -->
       </li>
     <% }) %>
   </ul>
   <a href="/">Home</a>
+
+
 </body>
 </html>
+
+

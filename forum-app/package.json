@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "csurf": "^1.11.0",
     "express-session": "^1.18.0",
     "moment": "^2.30.1",
     "pg": "^8.12.0"
