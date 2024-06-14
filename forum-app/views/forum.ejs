@@ -12,7 +12,7 @@
   <ul>
     <% posts.forEach(post => { %>
       <li>
-        <strong><%= post.username %></strong> at <em><%= post.formattedTimestamp %></em>: <%= post.content %>
+        <strong><%= post.User.username %></strong> at <em><%= post.timestamp %></em>: <%- post.content %>
       </li>
     <% }) %>
   </ul>

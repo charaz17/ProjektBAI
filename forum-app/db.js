@@ -1,5 +1,3 @@
-// db.js
-
 const { Sequelize, DataTypes } = require('sequelize');
 
 // Create a new Sequelize instance

